@@ -1,0 +1,64 @@
+# Maven
+target/
+*.jar
+*.war
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.bak
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+*.iws
+*.ipr
+*.classpath
+*.project
+*.settings/
+
+# Build
+bin/
+build/
+out/
+.gradle/
+
+# Testing
+.coverage
+.tox/
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+application-local.yml
+application-dev.yml
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Database
+*.sql.bak
+*.db
+*.sqlite
+
+# Node (if needed for frontend)
+node_modules/
+npm-debug.log
+package-lock.json
+yarn.lock
+
