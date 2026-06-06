@@ -1,5 +1,7 @@
 package com.revcast.account.service;
 
+import com.revcast.account.dto.AccountRequest;
+import com.revcast.account.dto.AccountResponse;
 import com.revcast.account.entity.Account;
 import com.revcast.account.repository.AccountRepository;
 import com.revcast.common.exception.ResourceNotFoundException;
@@ -10,10 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
-/**
- * Account Service
- */
 @Slf4j
 @Service
 public class AccountService {
@@ -21,79 +21,89 @@ public class AccountService {
     @Autowired
     private AccountRepository accountRepository;
 
-    /**
-     * Create account
-     */
     @Transactional
-    public Account createAccount(Account account) {
-        log.info("Creating account: {}", account.getAccountName());
+    public AccountResponse createAccount(AccountRequest request) {
+        log.info("Creating new account with code: {}", request.getAccountCode());
 
-        if (accountRepository.existsByAccountCode(account.getAccountCode())) {
-            throw new ValidationException("Account with code " + account.getAccountCode() + " already exists");
+        if (accountRepository.existsByAccountCode(request.getAccountCode())) {
+            throw new ValidationException("Account with code " + request.getAccountCode() + " already exists.");
+        }
+        if (accountRepository.existsByAccountName(request.getAccountName())) {
+            throw new ValidationException("Account with name " + request.getAccountName() + " already exists.");
         }
 
-        if (accountRepository.existsByAccountName(account.getAccountName())) {
-            throw new ValidationException("Account with name " + account.getAccountName() + " already exists");
+        Account account = Account.builder()
+                .accountName(request.getAccountName())
+                .accountCode(request.getAccountCode())
+                .description(request.getDescription())
+                .isActive(request.getIsActive())
+                .build();
+
+        Account savedAccount = accountRepository.save(account);
+        log.info("Account created successfully with ID: {}", savedAccount.getId());
+        return mapToAccountResponse(savedAccount);
+    }
+
+    @Transactional(readOnly = true)
+    public AccountResponse getAccountById(Long id) {
+        log.info("Fetching account with ID: {}", id);
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found with ID: " + id));
+        return mapToAccountResponse(account);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AccountResponse> getAllAccounts() {
+        log.info("Fetching all accounts");
+        return accountRepository.findAll().stream()
+                .map(this::mapToAccountResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public AccountResponse updateAccount(Long id, AccountRequest request) {
+        log.info("Updating account with ID: {}", id);
+        Account existingAccount = accountRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found with ID: " + id));
+
+        if (!existingAccount.getAccountCode().equals(request.getAccountCode()) &&
+                accountRepository.existsByAccountCode(request.getAccountCode())) {
+            throw new ValidationException("Account with code " + request.getAccountCode() + " already exists.");
+        }
+        if (!existingAccount.getAccountName().equals(request.getAccountName()) &&
+                accountRepository.existsByAccountName(request.getAccountName())) {
+            throw new ValidationException("Account with name " + request.getAccountName() + " already exists.");
         }
 
-        account.setIsActive(true);
-        return accountRepository.save(account);
+        existingAccount.setAccountName(request.getAccountName());
+        existingAccount.setAccountCode(request.getAccountCode());
+        existingAccount.setDescription(request.getDescription());
+        existingAccount.setIsActive(request.getIsActive());
+
+        Account updatedAccount = accountRepository.save(existingAccount);
+        log.info("Account updated successfully with ID: {}", updatedAccount.getId());
+        return mapToAccountResponse(updatedAccount);
     }
 
-    /**
-     * Get account by ID
-     */
-    @Transactional(readOnly = true)
-    public Account getAccountById(Long id) {
-        return accountRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Account", "id", id));
-    }
-
-    /**
-     * Get account by code
-     */
-    @Transactional(readOnly = true)
-    public Account getAccountByCode(String code) {
-        return accountRepository.findByAccountCode(code)
-                .orElseThrow(() -> new ResourceNotFoundException("Account", "code", code));
-    }
-
-    /**
-     * Get all active accounts
-     */
-    @Transactional(readOnly = true)
-    public List<Account> getAllActiveAccounts() {
-        return accountRepository.findByIsActiveTrue();
-    }
-
-    /**
-     * Update account
-     */
     @Transactional
-    public Account updateAccount(Long id, Account accountUpdate) {
-        log.info("Updating account: {}", id);
-
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Account", "id", id));
-
-        account.setAccountName(accountUpdate.getAccountName());
-        account.setDescription(accountUpdate.getDescription());
-
-        return accountRepository.save(account);
+    public void deleteAccount(Long id) {
+        log.info("Deleting account with ID: {}", id);
+        if (!accountRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Account not found with ID: " + id);
+        }
+        accountRepository.deleteById(id);
+        log.info("Account deleted successfully with ID: {}", id);
     }
 
-    /**
-     * Deactivate account
-     */
-    @Transactional
-    public Account deactivateAccount(Long id) {
-        log.info("Deactivating account: {}", id);
-
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Account", "id", id));
-
-        account.setIsActive(false);
-        return accountRepository.save(account);
+    private AccountResponse mapToAccountResponse(Account account) {
+        return AccountResponse.builder()
+                .id(account.getId())
+                .accountName(account.getAccountName())
+                .accountCode(account.getAccountCode())
+                .description(account.getDescription())
+                .isActive(account.getIsActive())
+                .createdAt(account.getCreatedAt())
+                .updatedAt(account.getUpdatedAt())
+                .build();
     }
 }
-
